@@ -202,9 +202,6 @@ sudo vim /etc/sysctl.conf
 sudo sysctl -p
 ```
 
-<!-- - Disable Source/destination check for openvpn -->
-
-
 - Create config file, leave routes out for now
   - `sudo vim /etc/openvpn/server/server.conf`
 
@@ -389,63 +386,192 @@ sudo systemctl daemon-reload
 sudo systemctl restart systemd-networkd
 sudo systemctl restart systemd-resolved
 
-## Create gate-sso
+## Install docker on Ubuntu 20.04
+- Set up the repository
+```bash
+sudo apt install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+```
+- Add Docker’s official GPG key
+```bash
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+```
+- Set up the stable repository
+```bash
+echo \
+  "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+- Install Docker Engine
+```bash
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io
+```
 
-Ensure that ruby is installed (>= 2.4) 
-ruby -v
-sudo apt install ruby-full
-ruby -v
+- Install docker compose
+```bash
+sudo apt install docker-compose
+```
+vim docker-compose.yaml
+sudo docker-compose up -d
+sudo docker ps
 
-and bundler gem is installed.
-gem list
-sudo gem install bundler
+## Install MySQL 5.7 on Ubuntu 20.10
+- Get repository from [here](https://dev.mysql.com/downloads/repo/apt/)
+```bash
+cd
+wget https://dev.mysql.com/get/mysql-apt-config_0.8.19-1_all.deb
+sudo dpkg -i mysql-apt-config_0.8.19-1_all.deb
+```
+
+mysql -u root -p -h 127.0.0.1 -P 3306
+
+- Install MySQL server
+```bash
+sudo apt install mysql-client
+```
+
+- Check the status
+```bash
+sudo systemctl status mysql
+```
+
+- Configure access
+```bash
+sudo mysql_secure_installation
+```
+
+- Log in to MySQL as root
+```bash
+sudo mysql
+```
+
+- Create user for gate-sso
+```sql
+CREATE USER 'gate' IDENTIFIED BY 'devops123';
+```
+
+- Grant access to `gate_development` and `gate_test` databases
+```sql
+GRANT ALL PRIVILEGES ON gate_development.* TO 'gate';
+GRANT ALL PRIVILEGES ON gate_test.* TO 'gate';
+FLUSH PRIVILEGES;
+```
+
+- Log out
+```bash
+exit
+```
+
+## Install ruby on Ubuntu 20.04
+
+- Check ruby version (must be >= 2.4)
+```bash
+ruby -v
+```
+
+- Install rvm
+```bash
+curl -L https://get.rvm.io | bash -s stable
+```
+
+- Import GPG keys
+```bash
+curl -sSL https://rvm.io/mpapis.asc | gpg --import -
+curl -sSL https://rvm.io/pkuczynski.asc | gpg --import -
+```
+
+- Run script again
+```bash
+curl -L https://get.rvm.io | bash -s stable
+```
+
+- To start using RVM, load the script environment variables using the source command:
+```bash
+source ~/.rvm/scripts/rvm
+```
+
+- Install ruby `2.4.3` with rvm
+```bash
+rvm install 2.4.3
+```
+
+- Install `bundler` gem
+```bash
+gem install bundler
+```
+
+## Install GATE-SSO
+- Clone gate-sso
+```bas
 cd /opt
-git clone https://github.com/gate-sso/gate.git
+sudo git clone https://github.com/gate-sso/gate.git
+sudo chown -R ubuntu:ubuntu gate
+```
+
+- Install dependencies
+```bash
 cd gate
 bundle install
+```
 
-sudo apt-get install ubuntu-dev-tools ?
-sudo apt-get install zlib1g-dev ?
-sudo apt-get install libz-dev libiconv-hook1 libiconv-hook-dev ????
-gem install atomic ???
+- Install deps
+```bash
+sudo apt-get install libmysqlclient-dev
+```
+- Run bundle install again
+```bash
+bundle install
+```
 
 
-sudo apt-get install libmysqlclient-dev  #(mysql development headers) !!!
-<!-- sudo gem install mysql2 -- --with-mysql-dir=/etc/mysql/ -->
 
-sudo apt-get install nodejs
-
+- Run init
+```bash
 rake app:init
+```
+
+- Install nodejs
+```bash
+sudo apt install nodejs
+```
+
+- Run again
+```bash
+rake app:init
+```
+
+- Update env
+```bash
+vim .env
+```
+
+- Run setup
+```bash
 rake app:setup
+```
 
-https://www.digitalocean.com/community/tutorials/how-to-install-mysql-on-ubuntu-20-04
+- Start rails
+```bash
+rvmsudo rails server --port 80 --binding 0.0.0.0 --daemon
+```
 
-sudo apt install mysql-server
+ID:
+771040318735-n574l3luikrpvcp5qc5gcb1dkr95ujr6.apps.googleusercontent.com
+Secret:
+fuX-lyhnoIe2ZpNJi-8ZX8ec
+lsof -wni tcp:8080
 
-<!-- gem 'bigdecimal', '1.3.5'
-sudo gem install bigdecimal -->
+rvmsudo rails server -p 80
 
+redirect_uri: http://gate.devopsbyexample.io/users/auth/google_oauth2/callback
 
-## Install MySQL on Ubuntu 20.10
-sudo apt install mysql-server
-sudo systemctl status mysql
-sudo mysql_secure_installation
-sudo mysql
-CREATE USER 'gate'@'localhost' IDENTIFIED BY 'devops123User%';
-GRANT ALL PRIVILEGES ON gate_development.* TO 'gate'@'localhost';
-GRANT ALL PRIVILEGES ON gate_test.* TO 'gate'@'localhost';
+sudo mkdir /opt/vpnkeys/
 
-FLUSH PRIVILEGES;
-exit
-
-Note that this statement also includes WITH GRANT OPTION. This will allow your MySQL user to grant any that it has to other users on the system.
-
-curl -L https://get.rvm.io | bash -s stable
-vim /etc/group
-rvm:x:1001:linuxfork
-rvm list known
-
-rvm install 2.6.6
 
 ## Links
 - [Easy-RSA 3 Quickstart README](https://github.com/OpenVPN/easy-rsa/blob/master/README.quickstart.md)
@@ -520,7 +646,11 @@ iptables -I FORWARD -i tun0 -o ens5 -s 10.8.0.0/24 -d 10.0.0.0/16 -m conntrack -
 iptables -I FORWARD -i tun0 -o ens5 -s 10.8.0.5/32 -d 10.0.0.0/16 -m conntrack --ctstate NEW -j ACCEPT
 
 # Masquerade traffic from VPN to "the world" -- done in the nat table
-sudo iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE
+sudo iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE (need to save somehow)
 
 
 -A POSTROUTING -s 10.8.0.0/8 -o eth0 -j MASQUERADE
+
+
+use gate_development;
+select * from users;
