@@ -205,6 +205,20 @@ sudo sysctl -p
 - Create config file, leave routes out for now
   - `sudo vim /etc/openvpn/server/server.conf`
 
+sudo iptables -vnL
+sudo iptables -vnL FORWARD
+iptables --policy FORWARD ACCEPT (default policy)
+sudo iptables -t nat -S
+
+```bash
+sudo iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE
+```
+network manager or not, not ufw
+
+sudo apt-get install iptables-persistent
+sudo systemctl status netfilter-persistent.service
+
+
 - Check if you have `nobody` user
 ```bash
 cat /etc/passwd | grep nobody
@@ -598,59 +612,3 @@ Starting from OpenVPN 2.4, one can also use elliptic curves for TLS connections 
 ```bash
 brew remove tunnelblick
 ```
-
-
-
-
-
-ip link show
-- [create device](https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/networking/tuntap.rst?id=HEAD)
-- [http://vtun.sourceforge.net/](http://vtun.sourceforge.net/)
-- [7.6. ( NAT vs. Proxy ) - How does IP Masquerade differ from Proxy or NAT services?](https://tldp.org/HOWTO/IP-Masquerade-HOWTO/what-is-masq.html)
-
-```
-ip route list default
-sudo iptables -vnL
-sudo iptables -vnL FORWARD
-iptables --policy FORWARD ACCEPT (default policy)
-sudo iptables -t nat -S
-
-sudo iptables -D FORWARD -i tun0 -o ens5 -m conntrack --ctstate NEW -j ACCEPT
-
-
-# Allow traffic initiated from VPN to access LAN
-iptables -I FORWARD -i tun0 -o ens5 -s 10.8.0.0/24 -d 10.0.0.0/16 -m conntrack --ctstate NEW -j ACCEPT
-
-# Allow traffic initiated from VPN to access "the world"
-iptables -I FORWARD -i tun0 -o eth1 -s 10.8.0.0/24 -m conntrack --ctstate NEW -j ACCEPT
-
-# Allow traffic initiated from LAN to access "the world"
-iptables -I FORWARD -i eth0 -o eth1 -s 192.168.0.0/24 -m conntrack --ctstate NEW -j ACCEPT
-
-# Allow established traffic to pass back and forth
-iptables -I FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-
-# Notice that -I is used, so when listing it (iptables -vxnL) it will be reversed.  This is intentional in this demonstration.
-
-# Masquerade traffic from VPN to "the world" -- done in the nat table
-iptables -t nat -I POSTROUTING -o eth1 -s 10.8.0.0/24 -j MASQUERADE
-
-# Masquerade traffic from LAN to "the world"
-iptables -t nat -I POSTROUTING -o eth1 -s 192.168.0.0/24 -j MASQUERADE
-```
-
-
-
-# Allow traffic initiated from VPN to access LAN
-iptables -I FORWARD -i tun0 -o ens5 -s 10.8.0.0/24 -d 10.0.0.0/16 -m conntrack --ctstate NEW -j ACCEPT
-iptables -I FORWARD -i tun0 -o ens5 -s 10.8.0.5/32 -d 10.0.0.0/16 -m conntrack --ctstate NEW -j ACCEPT
-
-# Masquerade traffic from VPN to "the world" -- done in the nat table
-sudo iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE (need to save somehow)
-
-
--A POSTROUTING -s 10.8.0.0/8 -o eth0 -j MASQUERADE
-
-
-use gate_development;
-select * from users;
