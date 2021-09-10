@@ -21,7 +21,7 @@ cat > /etc/openvpn/keys/$1.ovpn <<EOF
 client
 dev tun
 proto udp
-remote 44.197.77.129 1194
+remote <ip> 1194
 resolv-retry infinite
 nobind
 persist-key
