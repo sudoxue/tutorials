@@ -1,7 +1,7 @@
 #!/bin/bash
 
 KEY_DIR=/etc/openvpn/easy-rsa
-OUTPUT_DIR=/etc/openvpn/client-configs/
+OUTPUT_DIR=/etc/openvpn/client-configs
 BASE_CONFIG=/etc/openvpn/client-configs/base.ovpn
 
 cat ${BASE_CONFIG} \

@@ -272,143 +272,85 @@ easyrsa gen-req example-1 nopass
 easyrsa sign-req client example-1
 ```
 
-<!-- - Create config
-```bash
-cd
-vim example-1.ovpn
-``` -->
+- Create `example-1.ovpn` profile
 
-<!-- - Copy profile to the host machine
 ```bash
-scp -i devops.pem ubuntu@44.197.77.129:~/example-1.ovpn .
-``` -->
-
-- Install tunnelblick
-```bash
-brew install --cask tunnelblick
-```
-```
 cat /etc/openvpn/easy-rsa/pki/ca.crt
 cat /etc/openvpn/easy-rsa/pki/issued/example-1.crt
 cat /etc/openvpn/easy-rsa/pki/private/example-1.key
 cat /etc/openvpn/easy-rsa/ta.key
 ```
 
-```
-nc -vz 10.0.3.144 22
-ping 10.0.3.144
-
-nc -vz 10.0.32.234 22
-```
-
-- Open profile
-
-netstat -r
-
-
+- Install tunnelblick
 ```bash
-traceroute 10.0.3.69
+brew install --cask tunnelblick
 ```
 
+- Install `example-1.ovpn` profile
 
-## Add routes back
-
-```
-push "route 10.0.0.0 255.255.252.0"
-push "route 10.0.16.0 255.255.240.0"
-push "route 10.0.32.0 255.255.255.0"
-```
-
-## Create EC2 instance in private-small subnet
-
-- Create instance with tag Name: test-1
-
-- test 
+- Run journalctl on OpenVPN server
 ```bash
-nc -vz 10.0.32.234 22
+journalctl --no-pager --full -u openvpn-server@server -f
 ```
-
-## Update firewall
-you need to have ufw
-
-```bash
-ip route list default
-sudo vim /etc/ufw/before.rules
-sudo vim /etc/default/ufw
-```
-
-```
-# START OPENVPN RULES
-# NAT table rules
-*nat
-:POSTROUTING ACCEPT [0:0]
--A POSTROUTING -s 10.8.0.0/8 -o ens5 -j MASQUERADE
-COMMIT
-# END OPENVPN RULES
-```
-
-```bash
-sudo ufw disable
-sudo ufw enable
-```
-
-nft
-```
-sudo iptables -S
-sudo iptables -L -v -n
-sudo iptables -S FORWARD
-```
-
-
-install dns mask
-10.8.0.1
 
 - Check routes on mac
+```bash
 netstat -r
-
-## Create Route53 Private Hosted Zone
-- Create devops.pvt private hosted zone
-- Create `test.devops.pvt` A record `10.10.10.10`
-- Try to relove it from `local host`
-```bash
-dig test.devops.pvt
 ```
 
-- Try to relove it from `openvpn`
+- Create Ubuntu server in `private-small` subnet
+  - Use openvpn security group as a source
+
+- SSH to Ubuntu using private IP address
 ```bash
-dig test.devops.pvt
+ssh -i devops.pem ubuntu@<private ip>
 ```
+
+## Create Route53 private hosted zone
+- Create `devops.pvt` private zone
+- Create `test.devops.pvt` A record 
+- Resolve it from dev host
+- Enable VPC DNS resolution
 
 - To use private hosted zones, you must set the following Amazon VPC settings to true:
   - enableDnsHostnames
   - enableDnsSupport
 
-## Create EC in private subnet and ssh to it using private ip address
-
 ## Revoking Certificates
 
+- Revoke `example-1` certificate
+```bash
+cd /etc/openvpn/easy-rsa/
 easyrsa revoke example-1
+```
+- Generate CRL
+```bash
 easyrsa gen-crl
+```
+- Add CRL to OpenVPN server config
+```
+sudo vim /etc/openvpn/server/server.conf
 crl-verify /etc/openvpn/easy-rsa/pki/crl.pem
-
+sudo systemctl restart openvpn-server@server
+journalctl --no-pager --full -u openvpn-server@server -f
+```
 
 ## Generate profiels
 ```bash
 cd /etc/openvpn/
-mkdir client-configs
+sudo mkdir client-configs
 cd client-configs
-vim base.ovpn
-vim gen_client_profile.sh
-chmod +x gen_client_profile.sh
+sudo vim base.ovpn
+cd /etc/openvpn/easy-rsa/
 easyrsa gen-req example-2 nopass
 easyrsa sign-req client example-2
-./gen_client_profile.sh example-2
+vim gen_client_profile.sh
+sudo chmod +x gen_client_profile.sh
+sudo ./gen_client_profile.sh example-2
 ```
 
-
-sudo systemctl daemon-reload
-sudo systemctl restart systemd-networkd
-sudo systemctl restart systemd-resolved
+- Create `example-2.ovpn`
+- Install `example-2.ovpn` profile
 
 ## Install docker on Ubuntu 20.04
 - Set up the repository
@@ -432,8 +374,8 @@ echo \
 ```
 - Install Docker Engine
 ```bash
-sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io
 ```
 
 - Install docker compose
@@ -444,34 +386,15 @@ vim docker-compose.yaml
 sudo docker-compose up -d
 sudo docker ps
 
-## Install MySQL 5.7 on Ubuntu 20.10
-- Get repository from [here](https://dev.mysql.com/downloads/repo/apt/)
-```bash
-cd
-wget https://dev.mysql.com/get/mysql-apt-config_0.8.19-1_all.deb
-sudo dpkg -i mysql-apt-config_0.8.19-1_all.deb
-```
-
-mysql -u root -p -h 127.0.0.1 -P 3306
-
+## Configure MySQL 5.7
 - Install MySQL server
 ```bash
 sudo apt install mysql-client
 ```
 
-- Check the status
+- Connect to mysql
 ```bash
-sudo systemctl status mysql
-```
-
-- Configure access
-```bash
-sudo mysql_secure_installation
-```
-
-- Log in to MySQL as root
-```bash
-sudo mysql
+mysql -u root -p -h 127.0.0.1 -P 3306
 ```
 
 - Create user for gate-sso
@@ -483,6 +406,7 @@ CREATE USER 'gate' IDENTIFIED BY 'devops123';
 ```sql
 GRANT ALL PRIVILEGES ON gate_development.* TO 'gate';
 GRANT ALL PRIVILEGES ON gate_test.* TO 'gate';
+GRANT ALL PRIVILEGES ON openvpn.* TO 'gate';
 FLUSH PRIVILEGES;
 ```
 
@@ -547,16 +471,10 @@ bundle install
 ```bash
 sudo apt-get install libmysqlclient-dev
 ```
+
 - Run bundle install again
 ```bash
 bundle install
-```
-
-
-
-- Run init
-```bash
-rake app:init
 ```
 
 - Install nodejs
@@ -569,41 +487,46 @@ sudo apt install nodejs
 rake app:init
 ```
 
+- Create SSO in gcp
+  - Go to APIs & Services
+  - Create OAuth Client ID credentials
+  - http://gate.devopsbyexample.io/users/auth/google_oauth2/callback
+
 - Update env
 ```bash
 vim .env
 ```
+```
+GATE_SERVER_URL=http://gate.devopsbyexample.io
+GATE_OAUTH_CLIENT_ID=771040318735-7anf9ct0fo5a23s6gqsnmc2vo3ifbo28.apps.googleusercontent.com
+GATE_OAUTH_CLIENT_SECRET=8SNXY_H7RE2-nffqDGIKGZ9i
+GATE_HOSTED_DOMAIN=devopsbyexample.io
+GATE_HOSTED_DOMAINS=antonputra.com
+GATE_DB_HOST=127.0.0.1
+<!-- GATE_DB_NAME=openvpn -->
+GATE_DB_PASSWORD=devops123
+```
+
+- Create A record for gate.devopsbyexample.io
 
 - Run setup
 ```bash
 rake app:setup
 ```
 
+- Open port 80 on SG
+
+- Create `sudo vim /etc/openvpn/easy-rsa/gen-client-conf` (Update remote ip)
+- Create `sudo vim /etc/openvpn/easy-rsa/gen-client-keys` (Update remote ip)
+
 - Start rails
 ```bash
 rvmsudo rails server --port 80 --binding 0.0.0.0 --daemon
 ```
 
-ID:
-771040318735-n574l3luikrpvcp5qc5gcb1dkr95ujr6.apps.googleusercontent.com
-Secret:
-fuX-lyhnoIe2ZpNJi-8ZX8ec
-lsof -wni tcp:8080
-
-rvmsudo rails server -p 80
-
-redirect_uri: http://gate.devopsbyexample.io/users/auth/google_oauth2/callback
-
-sudo mkdir /opt/vpnkeys/
-
-
 ## Links
 - [Easy-RSA 3 Quickstart README](https://github.com/OpenVPN/easy-rsa/blob/master/README.quickstart.md)
 - [OpenVPN - Getting started How-To](https://community.openvpn.net/openvpn/wiki/GettingStartedwithOVPN?__cf_chl_jschl_tk__=pmd_X4JgyIGE5orR7DsfIDms7ZJjTaenJB7TAkouWI00egk-1630687272-0-gqNtZGzNAfujcnBszQgR)
-- [SSL stripping]
-
-Custom DNS servers
-If you have configured custom DNS servers on Amazon EC2 instances in your VPC, you must configure those DNS servers to route your private DNS queries to the IP address of the Amazon-provided DNS servers for your VPC. This IP address is the IP address at the base of the VPC network range "plus two." For example, if the CIDR range for your VPC is 10.0.0.0/16, the IP address of the DNS server is 10.0.0.2.
 
 - [Certificate Authority (CA)](https://wiki.archlinux.org/title/Easy-RSA)
 Starting from OpenVPN 2.4, one can also use elliptic curves for TLS connections (e.g. tls-cipher TLS-ECDHE-ECDSA-WITH-AES-256-GCM-SHA384). Elliptic curve cryptography provides more security and eliminates the need for a Diffie-Hellman parameters file. See [2] and [3].
@@ -622,3 +545,5 @@ Starting from OpenVPN 2.4, one can also use elliptic curves for TLS connections 
 ```bash
 brew remove tunnelblick
 ```
+- Delete Route53 hosted zone `devops.pvt`
+- Remove GCP credentials

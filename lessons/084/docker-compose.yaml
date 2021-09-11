@@ -11,7 +11,5 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root123
       MYSQL_DATABASE: openvpn
-      MYSQL_USER: gate
-      MYSQL_PASSWORD: devops123
 volumes:
   db_data: {}
