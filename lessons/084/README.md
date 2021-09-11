@@ -24,6 +24,7 @@
 
 ## Create AWS NAT Gateway
 - Allocate Elastic IP address for nat
+  - tag `Name: nat`
 
 - Create NAT gateway
   - call it `nat`
@@ -35,7 +36,7 @@
 
 - Create `private-small` subnet `10.0.32.0/24`
 
-- Create private route table with default route to nat gateway
+- Create `private` route table with default route to nat gateway
 
 - Update route tables for private subnets
 
@@ -43,19 +44,20 @@
 - Allocate static public IP address `openvpn`
 
 - Create Ubuntu 20.04
-  - tag Name: openvpn`
-  - SG: `OpenVPN`, add `1194` custom udp
+  - tag `Name: openvpn`
+  - Instance type: `t3.small`
+  - SG: `OpenVPN`, add `1194` custom udp from `Anywhere`
 
 - Associate Elastic IP with EC2
 
-## Install OpenVPN Ubuntu 20.04
+## Install OpenVPN on Ubuntu 20.04
 - Update permissions on the key
 ```bash
 chmod 400 devops.pem
 ```
 - SSH to the Ubuntu server
 ```bash
-ssh -i devops.pem ubuntu@44.197.77.129
+ssh -i devops.pem ubuntu@<ip>
 ```
 
 - Update Ubuntu repositories
@@ -103,7 +105,7 @@ apt policy openvpn
 sudo apt install openvpn=2.5.3-focal0
 ```
 
-## Install easy-rsa Ubuntu 20.04
+## Install easy-rsa on Ubuntu 20.04
 - Check the candidate verion
 ```bash
 apt policy easy-rsa
@@ -137,11 +139,10 @@ sudo ln -s /etc/openvpn/easy-rsa/easyrsa /usr/local/bin/
 
 - Change directory to home and test cli
 ```bash
-cd
 easyrsa --version
 ```
 
-## Creating a PKI for OpenVPN with easy-rsa
+## Creating PKI for OpenVPN with easy-rsa
 - Change directory to openvpn
 ```bash
 cd /etc/openvpn/easy-rsa
@@ -174,7 +175,7 @@ ls pki
 ls pki/private
 ```
 
-## Generate certificate for OpenVPN server
+## Generate certificate request for OpenVPN server
 - Generate signing request
 ```bash
 easyrsa gen-req openvpn-server nopass
@@ -189,6 +190,7 @@ easyrsa sign-req server openvpn-server
 - Generate the tls-crypt pre-shared key
 ```bash
 openvpn --genkey secret ta.key
+cat ta.key
 ```
 
 ## Configure OpenVPN server
@@ -202,22 +204,30 @@ sudo vim /etc/sysctl.conf
 sudo sysctl -p
 ```
 
-- Create config file, leave routes out for now
-  - `sudo vim /etc/openvpn/server/server.conf`
-
-sudo iptables -vnL
-sudo iptables -vnL FORWARD
-iptables --policy FORWARD ACCEPT (default policy)
+- Configure IP Tables
+```bash
 sudo iptables -t nat -S
+```
 
+- Find out network public network interface
+```bash
+ip route list default
+```
+
+- Configure nat routing
 ```bash
 sudo iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE
 ```
-network manager or not, not ufw
 
+- Save iptables
+```bash
 sudo apt-get install iptables-persistent
-sudo systemctl status netfilter-persistent.service
+```
 
+- Create config file, leave routes out for now
+```bash
+sudo vim /etc/openvpn/server/server.conf
+```
 
 - Check if you have `nobody` user
 ```bash
@@ -226,7 +236,7 @@ cat /etc/passwd | grep nobody
 
 - Check if you have `nogroup`
 ```bash
-cat /etc/group | grep no
+cat /etc/group | grep nogroup
 ```
 
 - Check subnet masks for CIDR [here](https://docs.netgate.com/pfsense/en/latest/network/cidr.html)
