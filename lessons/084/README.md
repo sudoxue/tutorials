@@ -381,6 +381,11 @@ cat \
 
 - Install `example-2.ovpn` profile
 
+- Check DNS again
+```bash
+dig test.devops.pvt
+```
+
 ## Install docker on Ubuntu 20.04
 
 - Set up the repository
