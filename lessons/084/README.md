@@ -413,7 +413,8 @@ echo \
 - Install Docker Engine
 ```bash
 sudo apt update
-sudo apt install docker-ce docker-ce-cli containerd.io
+sudo apt install \
+  docker-ce docker-ce-cli containerd.io
 ```
 
 - Install docker compose
