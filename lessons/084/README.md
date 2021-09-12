@@ -577,7 +577,10 @@ rake app:setup
 
 - Start rails
 ```bash
-rvmsudo rails server --port 80 --binding 0.0.0.0 --daemon
+rvmsudo rails server \
+  --port 80 \
+  --binding 0.0.0.0 \
+  --daemon
 ```
 
 ## Links
