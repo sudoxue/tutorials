@@ -225,7 +225,8 @@ ip route list default
 
 - Configure nat routing
 ```bash
-sudo iptables -t nat -I POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE
+sudo iptables \
+  -t nat -I POSTROUTING -s 10.8.0.0/24 -o ens5 -j MASQUERADE
 ```
 
 - Save iptables
