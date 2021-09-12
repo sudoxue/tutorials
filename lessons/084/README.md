@@ -55,6 +55,7 @@
 ```bash
 chmod 400 devops.pem
 ```
+
 - SSH to the Ubuntu server
 ```bash
 ssh -i devops.pem ubuntu@<ip>
@@ -64,10 +65,12 @@ ssh -i devops.pem ubuntu@<ip>
 ```bash
 sudo apt update
 ```
+
 - Check OpenVPN candidate
 ```bash
 apt policy openvpn
 ```
+
 - Compate verion with the latest release of OpenVPN on [GitHub](https://github.com/OpenVPN/openvpn)
 
 - We would need to run commands as a root, let's temporary use `sudo -s`
@@ -110,12 +113,14 @@ sudo apt install openvpn=2.5.3-focal0
 ```bash
 apt policy easy-rsa
 ```
+
 - Check available verions on [GitHub](https://github.com/OpenVPN/easy-rsa)
 
 - Download `easy-esa` tarball
 ```bash
 wget https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.8/EasyRSA-3.0.8.tgz
 ```
+
 - Untar it
 ```bash
 tar -zxf EasyRSA-3.0.8.tgz
@@ -143,6 +148,7 @@ easyrsa --version
 ```
 
 ## Creating PKI for OpenVPN with easy-rsa
+
 - Change directory to openvpn
 ```bash
 cd /etc/openvpn/easy-rsa
@@ -175,7 +181,8 @@ ls pki
 ls pki/private
 ```
 
-## Generate certificate request for OpenVPN server
+## Generate Certificate for OpenVPN Server
+
 - Generate signing request
 ```bash
 easyrsa gen-req openvpn-server nopass
@@ -187,6 +194,7 @@ easyrsa sign-req server openvpn-server
 ```
 
 ## Configure OpenVPN Cryptographic Material
+
 - Generate the tls-crypt pre-shared key
 ```bash
 openvpn --genkey secret ta.key
@@ -194,6 +202,7 @@ cat ta.key
 ```
 
 ## Configure OpenVPN server
+
 - Enable IP forwarding
 ```bash
 sudo vim /etc/sysctl.conf
@@ -250,6 +259,7 @@ sudo systemctl start openvpn-server@server
 ```bash
 sudo systemctl status openvpn-server@server
 ```
+
 - Enable openvpn-server
 ```bash
 sudo systemctl enable openvpn-server@server
@@ -260,7 +270,7 @@ sudo systemctl enable openvpn-server@server
 journalctl --no-pager --full -u openvpn-server@server -f
 ```
 
-## Create client profile .ovpn manually (Example 1)
+## Create Client Profile .ovpn Manually
 
 - Generate key pair
 ```bash
@@ -306,27 +316,35 @@ netstat -r
 ssh -i devops.pem ubuntu@<private ip>
 ```
 
-## Create Route53 private hosted zone
-- Create `devops.pvt` private zone
-- Create `test.devops.pvt` A record 
-- Resolve it from dev host
+## Create Route53 Private Hosted Zone
+
+- Create `devops.pvt` private hosted zone
+
+- Create `test.devops.pvt` A record with random IP address
+
+- Try to resolve it from development host
+```bash
+dig test.devops.pvt
+```
+
 - Enable VPC DNS resolution
+  - To use private hosted zones, you must set the following Amazon VPC settings to true:
+    - enableDnsHostnames
+    - enableDnsSupport
 
-- To use private hosted zones, you must set the following Amazon VPC settings to true:
-  - enableDnsHostnames
-  - enableDnsSupport
-
-## Revoking Certificates
+## Revoke OpenVPN Client Certificate
 
 - Revoke `example-1` certificate
 ```bash
 cd /etc/openvpn/easy-rsa/
 easyrsa revoke example-1
 ```
-- Generate CRL
+
+- Generate CRL (Certificate Revocation List)
 ```bash
 easyrsa gen-crl
 ```
+
 - Add CRL to OpenVPN server config
 ```
 sudo vim /etc/openvpn/server/server.conf
@@ -350,9 +368,11 @@ sudo ./gen_client_profile.sh example-2
 ```
 
 - Create `example-2.ovpn`
+
 - Install `example-2.ovpn` profile
 
 ## Install docker on Ubuntu 20.04
+
 - Set up the repository
 ```bash
 sudo apt install \
@@ -362,16 +382,19 @@ sudo apt install \
     gnupg \
     lsb-release
 ```
+
 - Add Docker’s official GPG key
 ```bash
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
 ```
+
 - Set up the stable repository
 ```bash
 echo \
   "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 ```
+
 - Install Docker Engine
 ```bash
 sudo apt update
@@ -382,12 +405,25 @@ sudo apt install docker-ce docker-ce-cli containerd.io
 ```bash
 sudo apt install docker-compose
 ```
-vim docker-compose.yaml
-sudo docker-compose up -d
-sudo docker ps
 
-## Configure MySQL 5.7
-- Install MySQL server
+- Create `docker-compose.yaml` to run MySQL 5.7
+```bash
+vim docker-compose.yaml
+```
+
+- Run docker compose up
+```bash
+sudo docker-compose up -d
+```
+
+- Check running containers
+```bash
+sudo docker ps
+```
+
+## Configure MySQL 5.7 Server fot Gate-sso
+
+- Install MySQL client
 ```bash
 sudo apt install mysql-client
 ```
@@ -406,7 +442,6 @@ CREATE USER 'gate' IDENTIFIED BY 'devops123';
 ```sql
 GRANT ALL PRIVILEGES ON gate_development.* TO 'gate';
 GRANT ALL PRIVILEGES ON gate_test.* TO 'gate';
-GRANT ALL PRIVILEGES ON openvpn.* TO 'gate';
 FLUSH PRIVILEGES;
 ```
 
@@ -415,7 +450,7 @@ FLUSH PRIVILEGES;
 exit
 ```
 
-## Install ruby on Ubuntu 20.04
+## Install Ruby on Rails on Ubuntu 20.04
 
 - Check ruby version (must be >= 2.4)
 ```bash
@@ -454,20 +489,25 @@ gem install bundler
 ```
 
 ## Install GATE-SSO
-- Clone gate-sso
+
+- Clone gate-sso GitHub repository
 ```bas
 cd /opt
 sudo git clone https://github.com/gate-sso/gate.git
+```
+
+- Update ownership of the repository
+```bash
 sudo chown -R ubuntu:ubuntu gate
 ```
 
-- Install dependencies
+- Install gate-sso dependencies
 ```bash
 cd gate
 bundle install
 ```
 
-- Install deps
+- Fix deps
 ```bash
 sudo apt-get install libmysqlclient-dev
 ```
@@ -503,7 +543,6 @@ GATE_OAUTH_CLIENT_SECRET=8SNXY_H7RE2-nffqDGIKGZ9i
 GATE_HOSTED_DOMAIN=devopsbyexample.io
 GATE_HOSTED_DOMAINS=antonputra.com
 GATE_DB_HOST=127.0.0.1
-<!-- GATE_DB_NAME=openvpn -->
 GATE_DB_PASSWORD=devops123
 ```
 
@@ -517,6 +556,7 @@ rake app:setup
 - Open port 80 on SG
 
 - Create `sudo vim /etc/openvpn/easy-rsa/gen-client-conf` (Update remote ip)
+
 - Create `sudo vim /etc/openvpn/easy-rsa/gen-client-keys` (Update remote ip)
 
 - Start rails
@@ -539,11 +579,12 @@ Starting from OpenVPN 2.4, one can also use elliptic curves for TLS connections 
 
 ## Clean UP
 - VPC `main`
-- SG `OpenVPN`
 - Key pair `devops`
+- Release public IPs
 - Delete tunnelblick
 ```bash
 brew remove tunnelblick
 ```
 - Delete Route53 hosted zone `devops.pvt`
 - Remove GCP credentials
+- Remove `gate.devopsbyexample.io` A record
