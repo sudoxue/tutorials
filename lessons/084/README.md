@@ -373,6 +373,8 @@ easyrsa sign-req client example-2
 vim gen_client_profile.sh
 sudo chmod +x gen_client_profile.sh
 sudo ./gen_client_profile.sh example-2
+cat \
+  /etc/openvpn/client-configs/example-2.ovpn
 ```
 
 - Create `example-2.ovpn`
