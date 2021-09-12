@@ -288,8 +288,10 @@ easyrsa sign-req client example-1
 
 ```bash
 cat /etc/openvpn/easy-rsa/pki/ca.crt
-cat /etc/openvpn/easy-rsa/pki/issued/example-1.crt
-cat /etc/openvpn/easy-rsa/pki/private/example-1.key
+cat \
+  /etc/openvpn/easy-rsa/pki/issued/example-1.crt
+cat \
+  /etc/openvpn/easy-rsa/pki/private/example-1.key
 cat /etc/openvpn/easy-rsa/ta.key
 ```
 
@@ -302,7 +304,8 @@ brew install --cask tunnelblick
 
 - Run journalctl on OpenVPN server
 ```bash
-journalctl --no-pager --full -u openvpn-server@server -f
+journalctl \
+  --no-pager --full -u openvpn-server@server -f
 ```
 
 - Check routes on mac
@@ -352,7 +355,8 @@ easyrsa gen-crl
 sudo vim /etc/openvpn/server/server.conf
 crl-verify /etc/openvpn/easy-rsa/pki/crl.pem
 sudo systemctl restart openvpn-server@server
-journalctl --no-pager --full -u openvpn-server@server -f
+journalctl \
+  --no-pager --full -u openvpn-server@server -f
 ```
 
 ## Generate profiels
