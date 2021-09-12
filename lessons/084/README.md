@@ -268,7 +268,8 @@ sudo systemctl enable openvpn-server@server
 
 - Check logs
 ```bash
-journalctl --no-pager --full -u openvpn-server@server -f
+journalctl \
+  --no-pager --full -u openvpn-server@server -f
 ```
 
 ## Create Client Profile .ovpn Manually
