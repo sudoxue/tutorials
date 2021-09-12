@@ -308,6 +308,8 @@ journalctl \
   --no-pager --full -u openvpn-server@server -f
 ```
 
+- Connect to the VPN
+
 - Check routes on mac
 ```bash
 netstat -r
